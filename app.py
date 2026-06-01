@@ -66,7 +66,7 @@ if uploaded_file is not None:
     
     st.write("---")
     # 🔥 교수님 피드백 5, 7번 반영: 고의적 화질 저하 및 재인코딩 시뮬레이터 조절 바
-    st.subheader("🛠️ Robustness Test (교수님 피드백 반영)")
+    st.subheader("🛠️ Robustness Test ")
     st.caption("카카오톡 전송, SNS 업로드, 인코딩 등으로 인해 고의로 화질이 저하된 환경을 가상으로 생성하여 모델의 강인함을 테스트합니다.")
     
     jpeg_quality = st.slider(
@@ -81,7 +81,9 @@ if uploaded_file is not None:
     # 슬라이더 값이 100 미만이면 강제로 이미지를 JPEG로 압축 후 다시 로드
     if jpeg_quality < 100:
         buffer = io.BytesIO()
-        image.save(buffer, format="JPEG", quality=jpeg_quality)
+        # 🔥 에러 해결 핵심: PNG나 투명도가 있는 이미지도 에러 없이 압축되도록 RGB 모드로 강제 변환
+        image_rgb = image.convert("RGB") 
+        image_rgb.save(buffer, format="JPEG", quality=jpeg_quality)
         buffer.seek(0)
         image = Image.open(buffer)
         st.warning(f"⚠️ 현재 이미지는 JPEG Quality {jpeg_quality} 수준으로 압축 및 열화된 상태입니다.")
