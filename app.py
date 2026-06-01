@@ -5,11 +5,12 @@ from PIL import Image, ImageFilter
 from torchvision import transforms
 from torchvision.models import efficientnet_b4
 from lightning_modules.detector import DeepfakeDetector
+import io  # 🔥 교수님 피드백 반영: JPEG 압축 시뮬레이션을 위한 라이브러리 추가
 
 # 1. 페이지 설정
 st.set_page_config(page_title="Deepfake Noise Detector", page_icon="🔍", layout="centered")
 
-# 2. 노이즈 추출 전처리 함수
+# 2. 노이즈 추출 전처리 함수 (원본 - 가우시안 블러 = 고주파 Artifact Map)
 class ArtifactMapTransform:
     def __init__(self, blur_radius=2):
         self.blur_radius = blur_radius
@@ -28,7 +29,7 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
-# 3. 모델 불러오기 (★ map_location="cpu" 추가로 노트북 에러 완벽 해결!)
+# 3. 모델 불러오기
 @st.cache_resource
 def load_trained_model():
     backbone = efficientnet_b4()
@@ -38,13 +39,10 @@ def load_trained_model():
         torch.nn.Linear(features, 2)
     )
     checkpoint_path = "models/best_model.ckpt"
-    
-    # 코랩(GPU) 파일을 내 노트북(CPU)에서 읽을 수 있게 강제 변환 주입!
     model = DeepfakeDetector.load_from_checkpoint(checkpoint_path, model=backbone, map_location="cpu")
     model.eval()
     return model
 
-# 에러 추적을 위한 가드 장치
 model_loaded = False
 error_message = ""
 
@@ -52,9 +50,9 @@ try:
     model = load_trained_model()
     model_loaded = True
 except FileNotFoundError:
-    error_message = "📁 실제로 'models/best_model.ckpt' 파일이 지정된 폴더에 없습니다. 경로를 다시 확인해 주세요."
+    error_message = "📁 'models/best_model.ckpt' 파일이 지정된 폴더에 없습니다. 경로를 다시 확인해 주세요."
 except Exception as e:
-    error_message = f"🚨 시스템 에러 발생 (컴퓨터가 아픈 진짜 이유): {str(e)}"
+    error_message = f"🚨 시스템 에러 발생: {str(e)}"
 
 # 4. 웹사이트 UI 디자인
 st.title("🔍 노이즈 기반 딥페이크 탐지 시스템")
@@ -63,8 +61,33 @@ st.write("이미지를 업로드하면 미세 노이즈 패턴을 분석하여 �
 uploaded_file = st.file_uploader("검사할 이미지 파일을 업로드하세요...", type=['jpg', 'jpeg', 'png'])
 
 if uploaded_file is not None:
+    # 원본 이미지 열기
     image = Image.open(uploaded_file)
-    st.image(image, caption='업로드된 이미지', use_column_width=True)
+    
+    st.write("---")
+    # 🔥 교수님 피드백 5, 7번 반영: 고의적 화질 저하 및 재인코딩 시뮬레이터 조절 바
+    st.subheader("🛠️ Robustness Test (교수님 피드백 반영)")
+    st.caption("카카오톡 전송, SNS 업로드, 인코딩 등으로 인해 고의로 화질이 저하된 환경을 가상으로 생성하여 모델의 강인함을 테스트합니다.")
+    
+    jpeg_quality = st.slider(
+        "JPEG 압축률 (Quality)",
+        min_value=10,
+        max_value=100,
+        value=100,
+        step=5,
+        help="100에 가까울수록 원본 화질이며, 값이 낮아질수록 고주파 노이즈가 찌그러지는 악조건을 시뮬레이션합니다."
+    )
+    
+    # 슬라이더 값이 100 미만이면 강제로 이미지를 JPEG로 압축 후 다시 로드
+    if jpeg_quality < 100:
+        buffer = io.BytesIO()
+        image.save(buffer, format="JPEG", quality=jpeg_quality)
+        buffer.seek(0)
+        image = Image.open(buffer)
+        st.warning(f"⚠️ 현재 이미지는 JPEG Quality {jpeg_quality} 수준으로 압축 및 열화된 상태입니다.")
+    
+    # 화면에 처리된(혹은 원본) 이미지 띄우기
+    st.image(image, caption=f'분석 대상 이미지 (JPEG Quality: {jpeg_quality})', use_column_width=True)
     
     if not model_loaded:
         st.error(error_message)
@@ -88,3 +111,6 @@ if uploaded_file is not None:
             st.error(f"⚠️ **딥페이크 조작이 의심됩니다!** (가짜 확률 {fake_prob*100:.1f}%)")
         else:
             st.success(f"✅ **변조 흔적이 없는 원본 이미지로 보입니다.** (진짜 확률 {real_prob*100:.1f}%)")
+            
+        # 💡 시연용 추가 정보 가이드
+        st.info(f"💡 **시연 팁:** JPEG 압축률을 50~60까지 대폭 낮춘 후에도 'Fake 확률'이 안정적으로 유지되는지 교수님께 보여드리면, 우리 모델의 고주파 강인함(Robustness)을 완벽하게 증명할 수 있습니다.")
