@@ -94,7 +94,7 @@ if uploaded_file is not None:
         st.error(error_message)
     else:
         with st.spinner("이미지에서 미세 노이즈 특성을 추출하여 분석하는 중입니다..."):
-            input_tensor = transform(image).unsqueeze(0)
+           input_tensor = transform(image.convert("RGB")).unsqueeze(0)
             with torch.no_grad():
                 outputs = model(input_tensor)
                 probabilities = torch.nn.functional.softmax(outputs, dim=1)[0]
