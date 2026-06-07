@@ -8,7 +8,9 @@ from lightning_modules.detector import DeepfakeDetector
 import io
 import os
 import yaml
-# 🔥 [핵심 부품] 아나콘다 테스트에서 썼던 선배의 로더를 그대로 강제 연동합니다.
+from torch.utils.data import DataLoader
+# 🔥 아나콘다 모의고사 엔진을 그대로 복제하기 위한 라이브러리
+import pytorch_lightning as pl
 from datasets.hybrid_loader import HybridDeepfakeDataset
 
 # 1. 페이지 설정
@@ -34,7 +36,7 @@ class ArtifactMapTransform:
         artifact = artifact / (artifact.max() + 1e-8) * 255
         return Image.fromarray(artifact.astype(np.uint8))
 
-# config.yaml의 설정과 완벽하게 일치하도록 전처리 구성
+# 규격 자동 구성
 if input_mode == "rgb":
     transform = transforms.Compose([
         transforms.Resize((380, 380)),
@@ -74,14 +76,15 @@ except Exception as e:
     error_message = f"🚨 시스템 에러 발생: {str(e)}"
 
 # 4. 웹사이트 UI 디자인
-st.title("🔍 딥페이크 탐지 시스템 (하이브리드 동기화)")
-st.info(f"⚙️ 현재 모델 연동 모드: **{input_mode.upper()}** | 사용 중인 체크포인트: **{checkpoint_filename}.ckpt**")
+st.title("🔍 딥페이크 탐지 시스템 (엔진 완벽 동기화)")
+st.info(f"⚙️ 연동 모드: {input_mode.upper()} | 체크포인트: {checkpoint_filename}.ckpt")
 
 uploaded_file = st.file_uploader("검사할 이미지 파일을 업로드하세요...", type=['jpg', 'jpeg', 'png'])
 
 if uploaded_file is not None:
-    # 임시 파일 경로 설정
-    temp_path = "temp_inference_image.jpg"
+    # 🔥 [해결 1] 원본 파일의 확장자(.png, .jpg 등)를 그대로 추출하여 포맷 파괴 방지
+    file_ext = os.path.splitext(uploaded_file.name)[1]
+    temp_path = f"temp_inference_image{file_ext}"
     
     st.write("---")
     st.subheader("🛠️ Robustness Test ")
@@ -92,61 +95,54 @@ if uploaded_file is not None:
         help="값이 낮아질수록 고주파 노이즈가 찌그러지는 악조건을 시뮬레이션합니다."
     )
     
-    # 🔥 [대수술] 이미지를 메모리에서 처리하지 않고, 아나콘다 환경처럼 강제로 파일로 저장 후 복제본 생성
     image_display = Image.open(uploaded_file).convert("RGB")
     if jpeg_quality < 100:
         image_display.save(temp_path, format="JPEG", quality=jpeg_quality)
-        st.warning(f"⚠️ 현재 이미지는 JPEG Quality {jpeg_quality} 수준으로 압축 및 열화된 상태입니다.")
+        st.warning(f"⚠️ 현재 이미지는 JPEG Quality {jpeg_quality} 수준으로 열화된 상태입니다.")
     else:
+        # 원본 확장자 그대로 바이너리 저장 (노이즈 오염 원천 차단)
         with open(temp_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
     
-    st.image(image_display, caption=f'분석 대상 이미지 (JPEG Quality: {jpeg_quality})', use_container_width=True)
+    st.image(image_display, caption='분석 대상 이미지', use_container_width=True)
     
     if not model_loaded:
         st.error(error_message)
     else:
-        with st.spinner("아나콘다 엔진 기반으로 정밀 분석 중입니다..."):
-            # 🔥 [필살기] 아나콘다 모의고사와 똑같이 선배의 Dataset Loader로 파일 강제 로드!
-            temp_sources = [(temp_path, 0)]
+        with st.spinner("아나콘다 검증 엔진을 구동하여 정밀 분석 중..."):
+            # 🔥 [해결 2] 아나콘다 robustness_test.py의 검증 파이프라인을 100% 똑같이 실행
+            # 0번(Real)이라고 가정한 뒤, 엔진이 내린 정답률(Accuracy)을 통해 역추적합니다.
+            temp_sources = [(temp_path, 0)] 
             eval_dataset = HybridDeepfakeDataset(temp_sources, transform=transform)
-            input_tensor, _ = eval_dataset[0]
-            input_tensor = input_tensor.unsqueeze(0) # 배치 차원 주입
+            val_loader = DataLoader(eval_dataset, batch_size=1, shuffle=False, num_workers=0)
             
-            with torch.no_grad():
-                outputs = model(input_tensor)
-                probabilities = torch.nn.functional.softmax(outputs, dim=1)[0]
+            trainer = pl.Trainer(
+                accelerator="gpu" if torch.cuda.is_available() else "cpu",
+                devices=1, logger=False, enable_progress_bar=False
+            )
+            
+            # 아나콘다와 완전히 동일한 검증 루틴 실행
+            results = trainer.validate(model, dataloaders=val_loader, verbose=False)
+            
+            is_real = False
+            if results:
+                acc = results[0].get("val_acc", None)
+                if acc is None:
+                    acc = results[0].get("val_accuracy", 0.0)
                 
-                prob_0 = probabilities[0].item() * 100
-                prob_1 = probabilities[1].item() * 100
-                
+                # 가정한 정답(Real)과 모델의 예측이 일치하면 acc가 1.0(100%)이 나옵니다.
+                if acc > 0.5:
+                    is_real = True
+
         st.write("---")
         st.subheader("📊 분석 결과")
         
-        # 이름표 반전 대비 스위치 유지
-        mapping_option = st.radio(
-            "🔄 진짜/가짜 결과가 여전히 반대로 뒤집혀서 나오는 것 같다면 아래 매칭을 전환해 보세요!",
-            ["[옵션 A] 0번=원본(Real), 1번=조작(Fake)", "[옵션 B] 0번=조작(Fake), 1번=원본(Real)"],
-            index=0
-        )
-        
-        if mapping_option == "[옵션 A] 0번=원본(Real), 1번=조작(Fake)":
-            real_prob = prob_0
-            fake_prob = prob_1
+        if is_real:
+            st.success("✅ **변조 흔적이 없는 원본 이미지로 판정되었습니다. (Real)**")
+            st.balloons() # 축하 풍선 이펙트 추가!
         else:
-            real_prob = prob_1
-            fake_prob = prob_0
+            st.error("🚨 **고주파 패턴 변형이 감지되어 딥페이크 조작으로 판정되었습니다. (Fake)**")
             
-        col1, col2 = st.columns(2)
-        col1.metric(label="Real (원본) 확률", value=f"{real_prob:.2f}%")
-        col2.metric(label="Fake (조작) 확률", value=f"{fake_prob:.2f}%")
-        
-        st.write("---")
-        if fake_prob > 50.0:
-            st.error(f"⚠️ **딥페이크 조작이 의심됩니다!** (가짜 확률 {fake_prob:.1f}%)")
-        else:
-            st.success(f"✅ **변조 흔적이 없는 원본 이미지로 보입니다.** (진짜 확률 {real_prob:.1f}%)")
-            
-    # 테스트 완료 후 임시 파일 깔끔하게 자동 삭제
+    # 임시 파일 삭제
     if os.path.exists(temp_path):
         os.remove(temp_path)
