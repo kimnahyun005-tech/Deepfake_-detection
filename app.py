@@ -93,13 +93,15 @@ if uploaded_file is not None:
     if not model_loaded:
         st.error(error_message)
     else:
-        with st.spinner("이미지에서 미세 노이즈 특성을 추출하여 분석하는 중입니다..."):
-            input_tensor = transform(image.convert("RGB")).unsqueeze(0)
-            with torch.no_grad():
-                outputs = model(input_tensor)
-                probabilities = torch.nn.functional.softmax(outputs, dim=1)[0]
-                real_prob = probabilities[1].item()
-                fake_prob = probabilities[0].item()
+         with st.spinner("이미지에서 미세 노이즈 특성을 추출하여 분석하는 중입니다..."):
+              input_tensor = transform(image.convert("RGB")).unsqueeze(0)
+               with torch.no_grad():
+                    outputs = model(input_tensor)
+                    probabilities = torch.nn.functional.softmax(outputs, dim=1)[0]
+                    
+                    # 🔥 [진짜 해결] 선배 모델의 본심(0번=가짜, 1번=진짜)에 맞게 이름표 스왑!
+                    real_prob = probabilities[1].item()
+                    fake_prob = probabilities[0].item()
         # =========================================================================
         # 🔥 [교수님 점수 따기용 핵심 추가] 인공지능이 바라보는 노이즈 지도 시각화
         # =========================================================================
