@@ -98,8 +98,8 @@ if uploaded_file is not None:
             with torch.no_grad():
                 outputs = model(input_tensor)
                 probabilities = torch.nn.functional.softmax(outputs, dim=1)[0]
-                real_prob = probabilities[0].item()
-                fake_prob = probabilities[1].item()
+                real_prob = probabilities[1].item()
+                fake_prob = probabilities[0].item()
         # =========================================================================
         # 🔥 [교수님 점수 따기용 핵심 추가] 인공지능이 바라보는 노이즈 지도 시각화
         # =========================================================================
