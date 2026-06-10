@@ -1,31 +1,3 @@
-import os
-import urllib.request
-
-# 구글 드라이브 직링크 생성 함수
-def download_file_from_google_drive(file_id, destination):
-    URL = f"https://docs.google.com/uc?export=download&id={file_id}"
-    with st.spinner("☁️ 서버에서 새 모델 파일(.ckpt)을 최초 1회 다운로드 중입니다. (1~2분 소요)..."):
-        try:
-            urllib.request.urlretrieve(URL, destination)
-            st.success("✅ 새 모델 다운로드 완료!")
-        except Exception as e:
-            st.error(f"🚨 모델 다운로드 실패: {e}")
-            st.stop()
-
-# 경로 설정
-BASE_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else "."
-# config_artifact.yaml에서 읽어온 이름으로 경로 지정
-checkpoint_path = os.path.join(BASE_DIR, "models", f"{checkpoint_filename}.ckpt")
-
-# 만약 서버에 모델 파일이 없다면 구글 드라이브에서 다운로드 시도
-if not os.path.exists(checkpoint_path):
-    os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
-    
-    # ⚠️여기에 본인의 구글 드라이브 파일 ID를 넣으세요!
-    GOOGLE_DRIVE_FILE_ID = "1pz9WFmKZrrPlUBE2EeRiWJ_HhtSJAox7" 
-    
-    download_file_from_google_drive(GOOGLE_DRIVE_FILE_ID, checkpoint_path)
-
 import streamlit as st
 import torch
 import numpy as np
@@ -36,13 +8,26 @@ from lightning_modules.detector import DeepfakeDetector
 import io
 import yaml
 import os
+import urllib.request  # 구글 드라이브 자동 다운로드용
 
 # 1. 페이지 설정
 st.set_page_config(page_title="Deepfake Noise Detector", page_icon="🔍", layout="centered")
 
-# === 📂 config.yaml 및 config_artifact.yaml 설정 동시 로드 ===
+# 구글 드라이브 다운로드 함수 (필요할 때 호출)
+def download_file_from_google_drive(file_id, destination):
+    URL = f"https://docs.google.com/uc?export=download&id={file_id}"
+    with st.spinner("☁️ 서버에서 새 모델 파일(.ckpt)을 최초 1회 다운로드 중입니다. (1~2분 소요)..."):
+        try:
+            urllib.request.urlretrieve(URL, destination)
+            st.success("✅ 새 모델 다운로드 완료!")
+        except Exception as e:
+            st.error(f"🚨 모델 다운로드 실패: {e}")
+            st.stop()
+
+# [순서 1] 기본 디렉토리 경로 설정을 먼저 합니다.
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else "."
 
+# [순서 2] YAML 설정 파일을 먼저 읽어와야 합니다.
 try:
     with open(os.path.join(BASE_DIR, "config.yaml"), encoding="utf-8") as f:
         cfg_rgb = yaml.safe_load(f)
@@ -52,10 +37,24 @@ except FileNotFoundError as e:
     st.error(f"📁 설정 파일을 찾을 수 없습니다: {e}")
     st.stop()
 
-# 체크포인트 파일명과 경로는 메인 파일(예: config_artifact.yaml) 기준으로 로드
-checkpoint_filename = cfg_art.get("checkpoint_filename", "best_model")
+# [순서 3] 읽어온 설정 파일(cfg_art)에서 이름을 꺼내 변수를 정의합니다. (★ NameError 해결 포인트)
+input_mode = cfg_art.get("input_mode", "artifact") 
+checkpoint_filename = cfg_art.get("checkpoint_filename", "artifact_model") 
+
+# [순서 4] 변수가 확실히 생성된 후, 그것을 활용해 모델 경로를 정의합니다.
 checkpoint_path = os.path.join(BASE_DIR, "models", f"{checkpoint_filename}.ckpt")
 
+# [순서 5] 만약 구글 드라이브 자동 다운로드 기능을 쓸 거라면 여기에 배치합니다.
+# (안 쓸 거라면 이 if문 블록 전체를 지우거나 주석 처리해도 무방해!)
+if not os.path.exists(checkpoint_path):
+    os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
+    
+    # ⚠️ 여기에 본인의 구글 드라이브 파일 ID를 넣으세요!
+    GOOGLE_DRIVE_FILE_ID = "1pz9WFmKZrrPlUBE2EeRiWJ_HhtSJAox7" 
+    
+    download_file_from_google_drive(GOOGLE_DRIVE_FILE_ID, checkpoint_path)
+
+# --- 이 아래부터 원래 있던 2번 노이즈 추출 전처리 함수 코드를 이어 붙이면 돼! ---
 # 2. 노이즈 추출 전처리 함수
 class ArtifactMapTransform:
     def __init__(self, blur_radius=2):
