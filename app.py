@@ -1,3 +1,6 @@
+import os
+import yaml
+import io
 import streamlit as st
 import torch
 import numpy as np
@@ -5,29 +8,48 @@ from PIL import Image, ImageFilter
 from torchvision import transforms
 from torchvision.models import efficientnet_b4, vit_b_16
 from lightning_modules.detector import DeepfakeDetector
-import io
-import yaml
-import os
-import urllib.request  # 구글 드라이브 자동 다운로드용
+import requests  # 👈 상단 임포트창에 requests가 없다면 추가해줘!
 
 # 1. 페이지 설정
 st.set_page_config(page_title="Deepfake Noise Detector", page_icon="🔍", layout="centered")
 
-# 구글 드라이브 다운로드 함수 (필요할 때 호출)
+# === 🚀 대용량 구글 드라이브 다운로드 안전 버전 ===
 def download_file_from_google_drive(file_id, destination):
-    URL = f"https://docs.google.com/uc?export=download&id={file_id}"
-    with st.spinner("☁️ 서버에서 새 모델 파일(.ckpt)을 최초 1회 다운로드 중입니다. (1~2분 소요)..."):
+    URL = "https://docs.google.com/uc?export=download"
+    session = requests.Session()
+    
+    with st.spinner("☁️ 서버에서 대용량 모델 파일(.ckpt)을 다운로드 중입니다. (1~2분 소요)..."):
         try:
-            urllib.request.urlretrieve(URL, destination)
-            st.success("✅ 새 모델 다운로드 완료!")
+            # 1차 요청으로 경고 페이지 및 쿠키 확보
+            response = session.get(URL, params={'id': file_id}, stream=True)
+            
+            # 쿠키에서 download_warning 토큰이 있는지 확인
+            token = None
+            for key, value in response.cookies.items():
+                if key.startswith('download_warning'):
+                    token = value
+                    break
+            
+            # 토큰이 있다면 다운로드 컨펌 파라미터 추가해서 재요청
+            if token:
+                params = {'id': file_id, 'confirm': token}
+                response = session.get(URL, params=params, stream=True)
+            
+            # 실제 파일 저장
+            with open(destination, "wb") as f:
+                for chunk in response.iter_content(chunk_size=32768):
+                    if chunk: 
+                        f.write(chunk)
+                        
+            st.success("✅ 새 모델 다운로드 및 설치 완료!")
         except Exception as e:
             st.error(f"🚨 모델 다운로드 실패: {e}")
             st.stop()
 
-# [순서 1] 기본 디렉토리 경로 설정을 먼저 합니다.
+# [순서 1] 기본 디렉토리 경로 설정
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else "."
 
-# [순서 2] YAML 설정 파일을 먼저 읽어와야 합니다.
+# [순서 2] YAML 설정 파일 읽기
 try:
     with open(os.path.join(BASE_DIR, "config.yaml"), encoding="utf-8") as f:
         cfg_rgb = yaml.safe_load(f)
@@ -37,23 +59,22 @@ except FileNotFoundError as e:
     st.error(f"📁 설정 파일을 찾을 수 없습니다: {e}")
     st.stop()
 
-# [순서 3] 읽어온 설정 파일(cfg_art)에서 이름을 꺼내 변수를 정의합니다. (★ NameError 해결 포인트)
+# [순서 3] 변수 정의
 input_mode = cfg_art.get("input_mode", "artifact") 
 checkpoint_filename = cfg_art.get("checkpoint_filename", "artifact_model") 
 
-# [순서 4] 변수가 확실히 생성된 후, 그것을 활용해 모델 경로를 정의합니다.
+# [순서 4] 모델 경로 정의
 checkpoint_path = os.path.join(BASE_DIR, "models", f"{checkpoint_filename}.ckpt")
 
-# [순서 5] 만약 구글 드라이브 자동 다운로드 기능을 쓸 거라면 여기에 배치합니다.
-# (안 쓸 거라면 이 if문 블록 전체를 지우거나 주석 처리해도 무방해!)
+# [순서 5] 자동 다운로드 실행 구문
 if not os.path.exists(checkpoint_path):
     os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
     
-    # ⚠️ 여기에 본인의 구글 드라이브 파일 ID를 넣으세요!
-    GOOGLE_DRIVE_FILE_ID = "1pz9WFmKZrrPlUBE2EeRiWJ_HhtSJAox7" 
+    # ⚠️ 본인의 구글 드라이브 파일 ID 입력
+    GOOGLE_DRIVE_FILE_ID = "여기에_구글드라이브_공유_ID_입력" 
     
     download_file_from_google_drive(GOOGLE_DRIVE_FILE_ID, checkpoint_path)
-
+    
 # --- 이 아래부터 원래 있던 2번 노이즈 추출 전처리 함수 코드를 이어 붙이면 돼! ---
 # 2. 노이즈 추출 전처리 함수
 class ArtifactMapTransform:
