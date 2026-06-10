@@ -1,6 +1,3 @@
-import os
-import yaml
-import io
 import streamlit as st
 import torch
 import numpy as np
@@ -8,7 +5,10 @@ from PIL import Image, ImageFilter
 from torchvision import transforms
 from torchvision.models import efficientnet_b4, vit_b_16
 from lightning_modules.detector import DeepfakeDetector
-import requests  # 👈 상단 임포트창에 requests가 없다면 추가해줘!
+import io
+import yaml
+import os
+import requests  # 대용량 다운로드용
 
 # 1. 페이지 설정
 st.set_page_config(page_title="Deepfake Noise Detector", page_icon="🔍", layout="centered")
@@ -20,22 +20,17 @@ def download_file_from_google_drive(file_id, destination):
     
     with st.spinner("☁️ 서버에서 대용량 모델 파일(.ckpt)을 다운로드 중입니다. (1~2분 소요)..."):
         try:
-            # 1차 요청으로 경고 페이지 및 쿠키 확보
             response = session.get(URL, params={'id': file_id}, stream=True)
-            
-            # 쿠키에서 download_warning 토큰이 있는지 확인
             token = None
             for key, value in response.cookies.items():
                 if key.startswith('download_warning'):
                     token = value
                     break
             
-            # 토큰이 있다면 다운로드 컨펌 파라미터 추가해서 재요청
             if token:
                 params = {'id': file_id, 'confirm': token}
                 response = session.get(URL, params=params, stream=True)
             
-            # 실제 파일 저장
             with open(destination, "wb") as f:
                 for chunk in response.iter_content(chunk_size=32768):
                     if chunk: 
@@ -66,16 +61,24 @@ checkpoint_filename = cfg_art.get("checkpoint_filename", "artifact_model")
 # [순서 4] 모델 경로 정의
 checkpoint_path = os.path.join(BASE_DIR, "models", f"{checkpoint_filename}.ckpt")
 
+# === 🔥 [핵심 추가] 가짜 파일 자동 검사 및 삭제 기능 ===
+if os.path.exists(checkpoint_path):
+    file_size_mb = os.path.getsize(checkpoint_path) / (1024 * 1024)
+    # 진짜 딥러닝 모델은 무조건 수십~수백 MB 이상이야. 
+    # 만약 파일 크기가 1MB도 안 된다면 100% 에러 메시지가 적힌 가짜 HTML 파일인 것!
+    if file_size_mb < 1.0:
+        os.remove(checkpoint_path)  # 기존에 꼬인 가짜 파일 강제 삭제
+
 # [순서 5] 자동 다운로드 실행 구문
 if not os.path.exists(checkpoint_path):
     os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
     
-    # ⚠️ 본인의 구글 드라이브 파일 ID 입력
+    # ⚠️ 본인의 구글 드라이브 파일 ID 입력 (확인 필수!)
     GOOGLE_DRIVE_FILE_ID = "1pz9WFmKZrrPlUBE2EeRiWJ_HhtSJAox7" 
     
     download_file_from_google_drive(GOOGLE_DRIVE_FILE_ID, checkpoint_path)
     
-# --- 이 아래부터 원래 있던 2번 노이즈 추출 전처리 함수 코드를 이어 붙이면 돼! ---
+# --- 이 아래부터 원래 있던 2번 노이즈 추출 전처리 함수 코드를 이어 붙이세요 ---
 # 2. 노이즈 추출 전처리 함수
 class ArtifactMapTransform:
     def __init__(self, blur_radius=2):
