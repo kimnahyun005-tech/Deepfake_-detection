@@ -1,3 +1,31 @@
+import os
+import urllib.request
+
+# 구글 드라이브 직링크 생성 함수
+def download_file_from_google_drive(file_id, destination):
+    URL = f"https://docs.google.com/uc?export=download&id={file_id}"
+    with st.spinner("☁️ 서버에서 새 모델 파일(.ckpt)을 최초 1회 다운로드 중입니다. (1~2분 소요)..."):
+        try:
+            urllib.request.urlretrieve(URL, destination)
+            st.success("✅ 새 모델 다운로드 완료!")
+        except Exception as e:
+            st.error(f"🚨 모델 다운로드 실패: {e}")
+            st.stop()
+
+# 경로 설정
+BASE_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else "."
+# config_artifact.yaml에서 읽어온 이름으로 경로 지정
+checkpoint_path = os.path.join(BASE_DIR, "models", f"{checkpoint_filename}.ckpt")
+
+# 만약 서버에 모델 파일이 없다면 구글 드라이브에서 다운로드 시도
+if not os.path.exists(checkpoint_path):
+    os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
+    
+    # ⚠️여기에 본인의 구글 드라이브 파일 ID를 넣으세요!
+    GOOGLE_DRIVE_FILE_ID = "1pz9WFmKZrrPlUBE2EeRiWJ_HhtSJAox7" 
+    
+    download_file_from_google_drive(GOOGLE_DRIVE_FILE_ID, checkpoint_path)
+
 import streamlit as st
 import torch
 import numpy as np
