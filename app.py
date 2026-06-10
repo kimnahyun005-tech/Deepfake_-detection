@@ -71,7 +71,7 @@ if not os.path.exists(checkpoint_path):
     os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
     
     # ⚠️ 본인의 구글 드라이브 파일 ID 입력
-    GOOGLE_DRIVE_FILE_ID = "여기에_구글드라이브_공유_ID_입력" 
+    GOOGLE_DRIVE_FILE_ID = "1pz9WFmKZrrPlUBE2EeRiWJ_HhtSJAox7" 
     
     download_file_from_google_drive(GOOGLE_DRIVE_FILE_ID, checkpoint_path)
     
