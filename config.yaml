@@ -1,16 +1,18 @@
+lr: 0.0005
+batch_size: 2
+num_epochs: 10
 
-learning_rate: 0.0005
-batch_size: 8             
-num_epochs: 30
+train_paths:
+  - "C:/Users/Konyang/최종 베이스라인 코드/data/train"
+
+val_paths:
+  - "C:/Users/Konyang/최종 베이스라인 코드/data/validation"
+
+input_mode: "rgb"
+checkpoint_filename: "rgb_model"
+
 early_stopping_patience: 4
-
-
-train_dir: "C:/Users/parkminhyuk/Downloads/DeepfakeDetector-main/open/data/train"
-val_dir: "C:/Users/parkminhyuk/Downloads/DeepfakeDetector-main/open/data/validation"
-
-
-scheduler_factor: 0.5
-scheduler_patience: 3
 monitor_metric: "val_loss"
+monitor_mode: "min"
 log_every_n_steps: 1
-save_top_k: 1
+logger: false
