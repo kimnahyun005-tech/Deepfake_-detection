@@ -175,8 +175,8 @@ if uploaded_file is not None:
                 prob_1 = probabilities[1].item() * 100
         
 # --- 📊 [최종 확정] 모델 성향 맞춤형 매칭 및 수치 보정(Calibration) ---
-        fake_prob = prob_1  
-        real_prob = prob_0  
+        fake_prob = prob_0  
+        real_prob = prob_1
 
         st.write("---")
         st.subheader("📊 분석 결과 (Analysis Result)")
