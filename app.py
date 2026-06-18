@@ -177,8 +177,8 @@ if uploaded_file is not None:
         st.write("---")
         st.subheader("📊 분석 결과")
         
-        real_prob = prob_1
-        fake_prob = prob_0
+        real_prob = prob_0
+        fake_prob = prob_1
             
         col1, col2 = st.columns(2)
         col1.metric(label="Real (원본) 확률", value=f"{real_prob:.2f}%")
