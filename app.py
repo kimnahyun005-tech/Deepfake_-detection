@@ -8,34 +8,16 @@ from lightning_modules.detector import DeepfakeDetector
 import io
 import yaml
 import os
-import requests  # 대용량 다운로드용
+import urllib.request  # 🚀 구글 requests 대신 기본 다운로드 도구 사용
 
 # 1. 페이지 설정
 st.set_page_config(page_title="Deepfake Noise Detector", page_icon="🔍", layout="centered")
 
-# === 🚀 대용량 구글 드라이브 다운로드 안전 버전 ===
-def download_file_from_google_drive(file_id, destination):
-    URL = "https://docs.google.com/uc?export=download"
-    session = requests.Session()
-    
-    with st.spinner("☁️ 서버에서 대용량 모델 파일(.ckpt)을 다운로드 중입니다. (1~2분 소요)..."):
+# === 🚀 깃허브 릴리즈 직링크 다운로드 함수 (구글 드라이브 함수에서 변경됨) ===
+def download_model_file(url, destination):
+    with st.spinner("☁️ 깃허브에서 모델 파일(.ckpt)을 안전하게 다운로드 중입니다. (1~2분 소요)..."):
         try:
-            response = session.get(URL, params={'id': file_id}, stream=True)
-            token = None
-            for key, value in response.cookies.items():
-                if key.startswith('download_warning'):
-                    token = value
-                    break
-            
-            if token:
-                params = {'id': file_id, 'confirm': token}
-                response = session.get(URL, params=params, stream=True)
-            
-            with open(destination, "wb") as f:
-                for chunk in response.iter_content(chunk_size=32768):
-                    if chunk: 
-                        f.write(chunk)
-                        
+            urllib.request.urlretrieve(url, destination)
             st.success("✅ 새 모델 다운로드 및 설치 완료!")
         except Exception as e:
             st.error(f"🚨 모델 다운로드 실패: {e}")
@@ -61,24 +43,21 @@ checkpoint_filename = cfg_art.get("checkpoint_filename", "artifact_model")
 # [순서 4] 모델 경로 정의
 checkpoint_path = os.path.join(BASE_DIR, "models", f"{checkpoint_filename}.ckpt")
 
-# === 🔥 [핵심 추가] 가짜 파일 자동 검사 및 삭제 기능 ===
+# === 🔥 [핵심] 기존에 다운로드 꼬였던 가짜 HTML 파일 강제 제거 ===
 if os.path.exists(checkpoint_path):
     file_size_mb = os.path.getsize(checkpoint_path) / (1024 * 1024)
-    # 진짜 딥러닝 모델은 무조건 수십~수백 MB 이상이야. 
-    # 만약 파일 크기가 1MB도 안 된다면 100% 에러 메시지가 적힌 가짜 HTML 파일인 것!
-    if file_size_mb < 1.0:
-        os.remove(checkpoint_path)  # 기존에 꼬인 가짜 파일 강제 삭제
+    if file_size_mb < 1.0:  # 1MB도 안 되는 파일은 에러 페이지이므로 삭제
+        os.remove(checkpoint_path)
 
 # [순서 5] 자동 다운로드 실행 구문
 if not os.path.exists(checkpoint_path):
     os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
     
-    # ⚠️ 본인의 구글 드라이브 파일 ID 입력 (확인 필수!)
-    GOOGLE_DRIVE_FILE_ID = "1pz9WFmKZrrPlUBE2EeRiWJ_HhtSJAox7" 
+    # ⚠️ 깃허브 Releases에서 복사한 .ckpt 파일 주소를 아래 따옴표 안에 꼭 붙여넣어줘!
+    GITHUB_RELEASE_URL = "https://github.com/kimnahyun005-tech/Deepfake_-detection/blob/main/models/best_model.ckpt"
     
-    download_file_from_google_drive(GOOGLE_DRIVE_FILE_ID, checkpoint_path)
+    download_model_file(GITHUB_RELEASE_URL, checkpoint_path)
     
-# --- 이 아래부터 원래 있던 2번 노이즈 추출 전처리 함수 코드를 이어 붙이세요 ---
 # 2. 노이즈 추출 전처리 함수
 class ArtifactMapTransform:
     def __init__(self, blur_radius=2):
@@ -115,8 +94,6 @@ def load_trained_model(cp_path, is_vit_model):
     if is_vit_model:
         backbone = vit_b_16()
         features = backbone.heads.head.in_features
-        # ⚠️ 중요: RGB(3개 채널) + Artifact(3개 채널) = 총 6개 채널 입력에 맞춰 모델 첫 레이어 변경 필요할 수 있음
-        # 만약 main_trainer.py에서 첫 conv 레이어 채널을 6으로 바꿨다면 app.py 모델 정의에도 반영해야 함
         backbone.heads.head = torch.nn.Sequential(
             torch.nn.Dropout(0.4),
             torch.nn.Linear(features, 2)
@@ -175,11 +152,9 @@ if uploaded_file is not None:
         st.error(error_message)
     else:
         with st.spinner("이미지 특성 및 노이즈 맵을 정밀 분석 중입니다..."):
-            # 🔥 [RGB]와 [Artifact Map] 개별 변환 후 채널 방향으로 병합 (Concat)
             rgb_tensor = rgb_transform(image)          # [3, H, W]
             art_tensor = artifact_transform(image)    # [3, H, W]
             
-            # 두 텐서를 채널축(dim=0) 기준으로 합쳐서 6채널 생성 후, 배치 차원 추가
             input_tensor = torch.cat([rgb_tensor, art_tensor], dim=0).unsqueeze(0) # [1, 6, H, W]
             
             with torch.no_grad():
