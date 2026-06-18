@@ -93,22 +93,12 @@ artifact_transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
-# 3. 모델 불러오기 (이 부분을 아래 코드로 통째로 바꾸면 돼!)
+# 3. 모델 불러오기 (3채널 기본 상태로 원상복구)
 @st.cache_resource
 def load_trained_model(cp_path, is_vit_model):
     if is_vit_model:
         backbone = vit_b_16()
-        
-        # 🔥 [추가] ViT 모델의 첫 번째 레이어(입력 채널)를 3에서 6으로 변경
-        old_conv = backbone.conv_proj
-        backbone.conv_proj = torch.nn.Conv2d(
-            in_channels=6,
-            out_channels=old_conv.out_channels,
-            kernel_size=old_conv.kernel_size,
-            stride=old_conv.stride,
-            bias=old_conv.bias is not None
-        )
-        
+        # 6채널로 강제 변환하던 코드를 지우고, 기본 3채널 상태를 유지합니다.
         features = backbone.heads.head.in_features
         backbone.heads.head = torch.nn.Sequential(
             torch.nn.Dropout(0.4),
@@ -116,30 +106,14 @@ def load_trained_model(cp_path, is_vit_model):
         )
     else:
         backbone = efficientnet_b4()
-        
-        # 🔥 [추가] EfficientNet 모델의 첫 번째 레이어(입력 채널)를 3에서 6으로 변경
-        old_conv = backbone.features[0][0]
-        backbone.features[0][0] = torch.nn.Conv2d(
-            in_channels=6,
-            out_channels=old_conv.out_channels,
-            kernel_size=old_conv.kernel_size,
-            stride=old_conv.stride,
-            padding=old_conv.padding,
-            bias=old_conv.bias is not None
-        )
-        
         features = backbone.classifier[1].in_features
         backbone.classifier = torch.nn.Sequential(
             torch.nn.Dropout(0.4),
             torch.nn.Linear(features, 2)
         )
     
-    # 가중치 로드
     model = DeepfakeDetector.load_from_checkpoint(
-        cp_path, 
-        model=backbone, 
-        map_location="cpu", 
-        weights_only=False
+        cp_path, model=backbone, map_location="cpu", weights_only=False
     )
     model.eval()
     return model
