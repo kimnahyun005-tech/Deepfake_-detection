@@ -36,7 +36,7 @@ except FileNotFoundError as e:
     st.error(f"📁 설정 파일을 찾을 수 없습니다: {e}")
     st.stop()
 
-# === 🚀 [수정] URL을 분석해서 파일명과 모델 종류를 자동 세팅하는 치트키 버전 ===
+import urllib.request  # 👈 파이썬 내장 기능이라 절대 에러 안 남!
 
 # ⚠️ 여기에 깃허브에서 복사한 주소를 넣으면 밑에서 자동으로 이름을 추출해!
 GITHUB_RELEASE_URL = "https://github.com/kimnahyun005-tech/Deepfake_-detection/releases/download/v1.0/vit_best-v2.ckpt"
@@ -44,7 +44,7 @@ GITHUB_RELEASE_URL = "https://github.com/kimnahyun005-tech/Deepfake_-detection/r
 # [자동 설정 1] URL 맨 끝에서 'vit_best-v2'라는 이름을 자동으로 뜯어냅니다.
 checkpoint_filename = GITHUB_RELEASE_URL.split("/")[-1].replace(".ckpt", "")
 
-# [자동 설정 2] 변수 및 경로 정의 (설정 파일이 없어도 주소 기준으로 강제 동기화)
+# [자동 설정 2] 변수 및 경로 정의
 input_mode = "artifact"
 checkpoint_path = os.path.join(BASE_DIR, "models", f"{checkpoint_filename}.ckpt")
 
@@ -54,10 +54,11 @@ if os.path.exists(checkpoint_path):
     if file_size_mb < 50.0: 
         os.remove(checkpoint_path)
 
-# [순서 5] 자동 다운로드 실행 구문
+# 자동 다운로드 실행 구문 (외부 함수 필요 없이 스스로 다운로드)
 if not os.path.exists(checkpoint_path):
     os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
-    download_model_file(GITHUB_RELEASE_URL, checkpoint_path)
+    with st.spinner("깃허브 Releases에서 대용량 모델을 안전하게 가져오는 중입니다..."):
+        urllib.request.urlretrieve(GITHUB_RELEASE_URL, checkpoint_path)
 
 # === 🚀 [자동 설정 3] 파일 이름에 'vit'가 들어가면 자동으로 ViT 구조로 스위칭! ===
 is_vit = "vit" in checkpoint_filename.lower()
