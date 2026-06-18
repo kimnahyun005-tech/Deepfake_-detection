@@ -1,5 +1,6 @@
 import streamlit as st
 import torch
+import urllib.request  # 👈 파이썬 내장 기능이라 절대 에러 안 남!
 import numpy as np
 from PIL import Image, ImageFilter
 from torchvision import transforms
@@ -8,7 +9,7 @@ from lightning_modules.detector import DeepfakeDetector
 import io
 import yaml
 import os
-import urllib.request  # 🚀 구글 requests 대신 기본 다운로드 도구 사용
+
 
 # 1. 페이지 설정
 st.set_page_config(page_title="Deepfake Noise Detector", page_icon="🔍", layout="centered")
@@ -36,7 +37,6 @@ except FileNotFoundError as e:
     st.error(f"📁 설정 파일을 찾을 수 없습니다: {e}")
     st.stop()
 
-import urllib.request  # 👈 파이썬 내장 기능이라 절대 에러 안 남!
 
 # ⚠️ 여기에 깃허브에서 복사한 주소를 넣으면 밑에서 자동으로 이름을 추출해!
 GITHUB_RELEASE_URL = "https://github.com/kimnahyun005-tech/Deepfake_-detection/releases/download/v1.0/vit_best-v2.ckpt"
