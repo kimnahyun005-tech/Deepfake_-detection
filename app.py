@@ -163,7 +163,7 @@ if uploaded_file is not None:
             rgb_tensor = rgb_transform(image)          # [3, H, W]
             art_tensor = artifact_transform(image)    # [3, H, W]
             
-            input_tensor = torch.cat([rgb_tensor, art_tensor], dim=0).unsqueeze(0) # [1, 6, H, W]
+            input_tensor = rgb_transform(image).unsqueeze(0)
             
             with torch.no_grad():
                 outputs = model(input_tensor)
