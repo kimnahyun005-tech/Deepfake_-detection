@@ -163,7 +163,8 @@ if uploaded_file is not None:
             rgb_tensor = rgb_transform(image)          # [3, H, W]
             art_tensor = artifact_transform(image)    # [3, H, W]
             
-            input_tensor = rgb_transform(image).unsqueeze(0)
+            # 🔥 바로 이 줄! 생으로 다시 계산하던 걸 지우고 위에서 만든 art_tensor를 쏙 넣어줍니다!
+            input_tensor = art_tensor.unsqueeze(0)     # [1, 3, H, W]
             
             with torch.no_grad():
                 outputs = model(input_tensor)
