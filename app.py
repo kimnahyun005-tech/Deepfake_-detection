@@ -158,20 +158,20 @@ if uploaded_file is not None:
     
     if not model_loaded:
         st.error(error_message)
-        else:
-            with st.spinner("이미지 특성 및 노이즈 맵을 정밀 분석 중입니다..."):
-                rgb_tensor = rgb_transform(image)          # [3, H, W]
-                art_tensor = artifact_transform(image)    # [3, H, W]
+    else:  # 👈 'if'와 'else'는 세로 줄이 딱 맞아야 해!
+        with st.spinner("이미지 특성 및 노이즈 맵을 정밀 분석 중입니다..."):
+            rgb_tensor = rgb_transform(image)          # [3, H, W]
+            art_tensor = artifact_transform(image)    # [3, H, W]
             
-            # 🔥 바로 이 줄! 생으로 다시 계산하던 걸 지우고 위에서 만든 art_tensor를 쏙 넣어줍니다!
-                input_tensor = art_tensor.unsqueeze(0)     # [1, 3, H, W]
-              
-                with torch.no_grad():
-                    outputs = model(input_tensor)
-                    probabilities = torch.nn.functional.softmax(outputs, dim=1)[0]
+            # 위에서 만든 art_tensor에 배치 차원 추가
+            input_tensor = art_tensor.unsqueeze(0)     # [1, 3, H, W]
+            
+            with torch.no_grad():
+                outputs = model(input_tensor)
+                probabilities = torch.nn.functional.softmax(outputs, dim=1)[0]
                 
-                    prob_0 = probabilities[0].item() * 100
-                    prob_1 = probabilities[1].item() * 100
+                prob_0 = probabilities[0].item() * 100
+                prob_1 = probabilities[1].item() * 100
                 
         st.write("---")
         st.subheader("📊 분석 결과")
