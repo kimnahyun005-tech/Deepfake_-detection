@@ -36,27 +36,32 @@ except FileNotFoundError as e:
     st.error(f"📁 설정 파일을 찾을 수 없습니다: {e}")
     st.stop()
 
-# [순서 3] 변수 정의
-input_mode = cfg_art.get("input_mode", "artifact") 
-checkpoint_filename = cfg_art.get("checkpoint_filename", "artifact_model") 
+# === 🚀 [수정] URL을 분석해서 파일명과 모델 종류를 자동 세팅하는 치트키 버전 ===
 
-# [순서 4] 모델 경로 정의
+# ⚠️ 여기에 깃허브에서 복사한 주소를 넣으면 밑에서 자동으로 이름을 추출해!
+GITHUB_RELEASE_URL = "https://github.com/kimnahyun005-tech/Deepfake_-detection/releases/download/v1.0/vit_best-v2.ckpt"
+
+# [자동 설정 1] URL 맨 끝에서 'vit_best-v2'라는 이름을 자동으로 뜯어냅니다.
+checkpoint_filename = GITHUB_RELEASE_URL.split("/")[-1].replace(".ckpt", "")
+
+# [자동 설정 2] 변수 및 경로 정의 (설정 파일이 없어도 주소 기준으로 강제 동기화)
+input_mode = "artifact"
 checkpoint_path = os.path.join(BASE_DIR, "models", f"{checkpoint_filename}.ckpt")
 
-# === 🔥 [핵심] 기존에 다운로드 꼬였던 가짜 HTML 파일 강제 제거 ===
+# === 🔥 [핵심] 옛날에 받아진 엉뚱한 파일이나 가짜 파일 강제 제거 ===
 if os.path.exists(checkpoint_path):
     file_size_mb = os.path.getsize(checkpoint_path) / (1024 * 1024)
-    if file_size_mb < 1.0:  # 1MB도 안 되는 파일은 에러 페이지이므로 삭제
+    if file_size_mb < 50.0: 
         os.remove(checkpoint_path)
 
 # [순서 5] 자동 다운로드 실행 구문
 if not os.path.exists(checkpoint_path):
     os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
-    
-    # ⚠️ 깃허브 Releases에서 복사한 .ckpt 파일 주소를 아래 따옴표 안에 꼭 붙여넣어줘!
-    GITHUB_RELEASE_URL = "https://github.com/kimnahyun005-tech/Deepfake_-detection/releases/download/v1.0/vit_best-v2.ckpt"
-    
     download_model_file(GITHUB_RELEASE_URL, checkpoint_path)
+
+# === 🚀 [자동 설정 3] 파일 이름에 'vit'가 들어가면 자동으로 ViT 구조로 스위칭! ===
+is_vit = "vit" in checkpoint_filename.lower()
+img_size = 224 if is_vit else 380
     
 # 2. 노이즈 추출 전처리 함수
 class ArtifactMapTransform:
