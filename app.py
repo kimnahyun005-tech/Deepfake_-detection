@@ -132,7 +132,7 @@ except Exception as e:
 
 # 4. 웹사이트 UI 디자인
 st.title("🔍 딥페이크 탐지 시스템")
-st.info(f"⚙️ Mode: RGB + Artifact Map ansamble | Quality: 380ㅌ380 | Model: EfficientNet-B4")
+st.info(f"⚙️ Mode: RGB + Artifact Map Ensamble | Quality: 380x380 | Model: EfficientNet-B4")
 
 uploaded_file = st.file_uploader("검사할 이미지 파일을 업로드하세요...", type=['jpg', 'jpeg', 'png'])
 
@@ -173,7 +173,9 @@ if uploaded_file is not None:
                 
                 prob_0 = probabilities[0].item() * 100
                 prob_1 = probabilities[1].item() * 100
-                
+                st.write("AI 내부 리얼 확률 데이터(0번, 1번):", probabilities.tolist())
+
+        
         st.write("---")
         st.subheader("📊 분석 결과")
         
