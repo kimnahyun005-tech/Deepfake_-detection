@@ -106,7 +106,12 @@ def load_trained_model(cp_path, is_vit_model):
             torch.nn.Linear(features, 2)
         )
     
-    model = DeepfakeDetector.load_from_checkpoint(cp_path, model=backbone, map_location="cpu")
+    model = DeepfakeDetector.load_from_checkpoint(
+        cp_path, 
+        model=backbone, 
+        map_location="cpu", 
+        weights_only=False  # 👈 이 옵션이 PyTorch 2.6 억까를 방지해줘!
+    )
     model.eval()
     return model
 
