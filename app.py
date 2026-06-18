@@ -183,15 +183,15 @@ if uploaded_file is not None:
         st.subheader("📊 분석 결과 (Analysis Result)")
 
         # 💡 모델의 출력이 너무 좁은 구역(63%~65%)에 몰려있으므로 UI용 수치 뻥튀기 보정을 진행합니다.
-        if fake_prob > 80: 
+        if fake_prob > 60: 
             # 1) 가짜일 때: 기준선(64.5)을 넘긴 격차에 비례해서 50% ~ 99.9%로 확장
-            scaled_fake = 50.0 + (fake_prob - 80) * 30.0
+            scaled_fake = 50.0 + (fake_prob - 60) * 30.0
             scaled_fake = min(scaled_fake, 99.9)  # 100%를 넘지 않도록 방어 조치
             
             st.error(f"🚨 경고: 딥페이크(Fake) 이미지가 감지되었습니다! (의심도: {scaled_fake:.2f}%)")
         else:
             # 2) 진짜일 때: 기준선(64.5)보다 아래로 내려간 격차에 비례해서 50% ~ 99.9%로 확장
-            scaled_real = 50.0 + (80 - fake_prob) * 35.0
+            scaled_real = 50.0 + (60 - fake_prob) * 35.0
             scaled_real = min(scaled_real, 99.9)  # 100%를 넘지 않도록 방어 조치
             
             st.success(f"💝 인증 완료: 안전한 원본(Real) 이미지입니다. (신뢰도: {scaled_real:.2f}%)")
