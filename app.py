@@ -54,7 +54,7 @@ if not os.path.exists(checkpoint_path):
     os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True)
     
     # ⚠️ 깃허브 Releases에서 복사한 .ckpt 파일 주소를 아래 따옴표 안에 꼭 붙여넣어줘!
-    GITHUB_RELEASE_URL = "https://github.com/kimnahyun005-tech/Deepfake_-detection/releases/download/v1.0/rgb_model.ckpt"
+    GITHUB_RELEASE_URL = "https://github.com/kimnahyun005-tech/Deepfake_-detection/releases/download/v1.0/vit_best-v2.ckpt"
     
     download_model_file(GITHUB_RELEASE_URL, checkpoint_path)
     
