@@ -154,7 +154,7 @@ if uploaded_file is not None:
         image = Image.open(buffer)
         st.warning(f"⚠️ 현재 이미지는 JPEG Quality {jpeg_quality} 수준으로 열화된 상태입니다.")
     
-    st.image(image, caption='분석 대상 이미지', use_container_width=True)
+    st.image(image, caption='분석 대상 이미지', width='stretch')
     
     if not model_loaded:
         st.error(error_message)
