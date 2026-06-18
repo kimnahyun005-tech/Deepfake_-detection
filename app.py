@@ -176,8 +176,8 @@ if uploaded_file is not None:
                 st.write("AI 내부 리얼 확률 데이터(0번, 1번):", probabilities.tolist())
 
         
-        fake_prob = prob_0
-        real_prob = prob_1
+        fake_prob = prob_1
+        real_prob = prob_0
 
         st.write("---")
         st.subheader("📊 분석 결과 (Analysis Result)")
