@@ -132,7 +132,7 @@ except Exception as e:
 
 # 4. 웹사이트 UI 디자인
 st.title("🔍 딥페이크 탐지 시스템")
-st.info(f"⚙️ 모드: RGB + ARTIFACT MAP 연합 | 해상도: {img_size}x{img_size} | 모델: {checkpoint_filename}.ckpt")
+st.info(f"⚙️ Mode: RGB + Artifact Map ansamble | Quality: 380ㅌ380 | Model: EfficientNet-B4")
 
 uploaded_file = st.file_uploader("검사할 이미지 파일을 업로드하세요...", type=['jpg', 'jpeg', 'png'])
 
@@ -165,7 +165,7 @@ if uploaded_file is not None:
             art_tensor = artifact_transform(image)    # [3, H, W]
             
             # 위에서 만든 art_tensor에 배치 차원 추가
-            input_tensor = art_tensor.unsqueeze(0)     # [1, 3, H, W]
+            input_tensor = rgb_tensor.unsqueeze(0)     # [1, 3, H, W]
             
             with torch.no_grad():
                 outputs = model(input_tensor)
@@ -177,8 +177,8 @@ if uploaded_file is not None:
         st.write("---")
         st.subheader("📊 분석 결과")
         
-        real_prob = prob_0
-        fake_prob = prob_1
+        real_prob = prob_1
+        fake_prob = prob_0
             
         col1, col2 = st.columns(2)
         col1.metric(label="Real (원본) 확률", value=f"{real_prob:.2f}%")
