@@ -173,7 +173,7 @@ if uploaded_file is not None:
                 
                 prob_0 = probabilities[0].item() * 100
                 prob_1 = probabilities[1].item() * 100
-                st.write("🤖 AI 내부 리얼 확률 데이터 (0번, 1번):", probabilities.tolist())
+
         
 # --- 📊 [최종 확정] 모델 성향 맞춤형 매칭 및 수치 보정(Calibration) ---
         fake_prob = prob_0  
