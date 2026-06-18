@@ -176,14 +176,14 @@ if uploaded_file is not None:
                 st.write("AI 내부 리얼 확률 데이터(0번, 1번):", probabilities.tolist())
 
         
-        fake_prob = prob_0
-        real_prob = prob_1
+        fake_prob = prob_1
+        real_prob = prob_0
 
         st.write("---")
         st.subheader("📊 분석 결과 (Analysis Result)")
 
 # 💡 기준선을 50%가 아니라 36%로 대폭 낮춰서 조금만 이상해도 경고를 띄우게 만듭니다!
-        if fake_prob > 36.0: 
+        if fake_prob > 64.5: 
             st.error(f"🚨 경고: 딥페이크(Fake) 이미지가 감지되었습니다! (의심도: {fake_prob:.2f}%)")
         else:
             st.success(f"💝 인증 완료: 안전한 원본(Real) 이미지입니다. (신뢰도: {real_prob:.2f}%)")
